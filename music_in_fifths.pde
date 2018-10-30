@@ -21,7 +21,9 @@ float mainX, mainY, mainW, mainH;
 Capture video;
 
 SoundFile[] loop = new SoundFile[NUMFILES];
+Reverb[] reverb = new Reverb[NUMFILES];
 int[] loopStartedAt = new int[NUMFILES];
+
 
 void setup() {
 
@@ -42,8 +44,10 @@ void setup() {
 
   for (int f=0; f<NUMFILES; f++) {
     println("Reading file " + (f+1) + "/" + NUMFILES); 
-    loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");
+    loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");    
     loopStartedAt[f] = -1000;
+    reverb[f] = new Reverb(this);
+    reverb[f].set(0.9, 0.8, 0.5);
   }
 }
 
@@ -72,7 +76,7 @@ void draw() {
 
     if (aveFlow.y*flowScale.y > 50) {
       currentState = States.playingAndNext;
-      
+
       println("Waiting for next fragment");
       background(0);
       text("Waiting for next fragment", 5, 494);
@@ -80,8 +84,9 @@ void draw() {
 
     if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
       loop[currentLoop].play();
+      reverb[currentLoop].process(loop[currentLoop]);
       loopStartedAt[currentLoop]=millis();
-      
+
       println("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
       background(0);
       text("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)", 5, 494);
