@@ -2,7 +2,7 @@ import gab.opencv.*;
 import processing.video.*;
 import processing.sound.*;
 
-int NUMFILES = 14;
+int NUMFILES = 35;
 
 public enum States {
   waitingForCam, calibrating, playing, playingAndNext
@@ -22,15 +22,16 @@ Capture video;
 
 SoundFile[] loop = new SoundFile[NUMFILES];
 int[] loopStartedAt = new int[NUMFILES];
-Reverb[] reverb = new Reverb[NUMFILES];
-boolean[] isProcessingReverb =  new boolean[NUMFILES];
+//Reverb[] reverb = new Reverb[NUMFILES];
+//boolean[] isProcessingReverb =  new boolean[NUMFILES];
 
 void setup() {
 
-  size(640, 500);
+  size(640, 520);
   noFill();
   strokeWeight(3);
   background(0);
+  textSize(22); 
 
   mainW = 100;
   mainH = 150;
@@ -46,9 +47,9 @@ void setup() {
     println("Reading file " + (f+1) + "/" + NUMFILES); 
     loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");    
     loopStartedAt[f] = -1000;
-    reverb[f] = new Reverb(this);
-    reverb[f].set(0.9, 0.1, 0.3);
-    isProcessingReverb[f] = false;
+    //reverb[f] = new Reverb(this);
+    //reverb[f].set(0.9, 0.1, 0.3);
+    //isProcessingReverb[f] = false;
   }
 }
 
@@ -80,7 +81,7 @@ void draw() {
 
       println("Waiting for next fragment");
       background(0);
-      text("Waiting for next fragment", 5, 494);
+      text("Waiting for next fragment", 12, 507);
     }
 
     if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
@@ -88,14 +89,16 @@ void draw() {
       loop[currentLoop].play();
       loopStartedAt[currentLoop]=millis();
 
+      /*
       if (!isProcessingReverb[currentLoop]) {
         reverb[currentLoop].process(loop[currentLoop]);
         isProcessingReverb[currentLoop] = true;
       }
+      */
 
       println("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
       background(0);
-      text("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)", 5, 494);
+      text("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)", 12, 507);
     }
   }
 
