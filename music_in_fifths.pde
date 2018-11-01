@@ -21,9 +21,9 @@ float mainX, mainY, mainW, mainH;
 Capture video;
 
 SoundFile[] loop = new SoundFile[NUMFILES];
-Reverb[] reverb = new Reverb[NUMFILES];
 int[] loopStartedAt = new int[NUMFILES];
-
+Reverb[] reverb = new Reverb[NUMFILES];
+boolean[] isProcessingReverb =  new boolean[NUMFILES];
 
 void setup() {
 
@@ -47,7 +47,8 @@ void setup() {
     loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");    
     loopStartedAt[f] = -1000;
     reverb[f] = new Reverb(this);
-    reverb[f].set(0.9, 0.8, 0.5);
+    reverb[f].set(0.9, 0.1, 0.3);
+    isProcessingReverb[f] = false;
   }
 }
 
@@ -83,9 +84,14 @@ void draw() {
     }
 
     if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
+
       loop[currentLoop].play();
-      reverb[currentLoop].process(loop[currentLoop]);
       loopStartedAt[currentLoop]=millis();
+
+      if (!isProcessingReverb[currentLoop]) {
+        reverb[currentLoop].process(loop[currentLoop]);
+        isProcessingReverb[currentLoop] = true;
+      }
 
       println("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
       background(0);
