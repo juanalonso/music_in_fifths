@@ -2,7 +2,7 @@ import gab.opencv.*;
 import processing.video.*;
 import processing.sound.*;
 
-int NUMFILES = 2;
+int NUMFILES = 35;
 
 public enum States {
   waitingForCam, calibrating, waitingForStart, playing, playingAndNext, end
@@ -15,7 +15,7 @@ int calibTime = 0;
 int lastFlowEvent = 0;
 
 OpenCV opencv;
-PVector flowScale = new PVector(55, 55);
+PVector flowScale = new PVector(40, 40);
 PVector aveFlow = new PVector(0, 0);
 
 float mainX, mainY, mainW, mainH;
@@ -37,12 +37,12 @@ void setup() {
   mainW = 100;
   mainH = 150;
   mainX = width/2-mainW/2;
-  mainY = (height-20)/2-mainH/2;
+  mainY = (height-40)/2-mainH/2;
 
   video = new Capture(this, 640, 480);
   video.start();
 
-  opencv = new OpenCV(this, width/4, (height-20)/4);
+  opencv = new OpenCV(this, width/4, (height-40)/4);
 
   for (int f=0; f<NUMFILES; f++) {
     println("Reading file " + (f+1) + "/" + NUMFILES); 
@@ -62,7 +62,7 @@ void draw() {
 
   //UPDATE
   PImage videoScaled = video.get();
-  videoScaled.resize(width/4, (height-20)/4);  
+  videoScaled.resize(width/4, (height-40)/4);  
   opencv.loadImage(videoScaled);
 
   switch (currentState) {
@@ -78,8 +78,8 @@ void draw() {
   case waitingForStart:
 
     if (flowEvent()) {
-      currentState = States.playing;
       lastFlowEvent = millis();
+      currentState = States.playing;
     }
     break;
 
@@ -87,12 +87,10 @@ void draw() {
   case playing:
 
     if (flowEvent()) {
-      currentState = States.playingAndNext;
-      lastFlowEvent = millis();
-      log("Waiting for fragment to finish");
-    }
 
-    if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
+      currentState = States.playingAndNext;
+      log("Waiting for fragment "+(currentLoop + 1)+" to finish");
+    } else if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
 
       loop[currentLoop].play();
       loopStartedAt[currentLoop]=millis();
@@ -104,8 +102,8 @@ void draw() {
        }
        */
 
-      log("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
-    }
+      log("Fragment "+ (currentLoop+1));
+    } 
     break;
 
 
@@ -113,6 +111,7 @@ void draw() {
 
     if (loop[currentLoop].position()==0) {
       currentLoop = (currentLoop+1)%NUMFILES;
+      lastFlowEvent = millis();
       if (currentLoop!=0) {
         currentState = States.playing;
       } else { 
@@ -120,6 +119,7 @@ void draw() {
         log("End of the performance");
       }
     }
+  default:
   }
 
 
@@ -130,18 +130,25 @@ void draw() {
   case calibrating:
     stroke(200);
     break;
+
   case playingAndNext:
     stroke(100, 150, 255);
     break;
+
   case playing: 
   case waitingForStart: 
     stroke(20, 240, 20);
-    line(mainX + mainW/2, 
-      mainY + mainH/2, 
-      mainX + mainW/2, 
-      mainY + mainH/2 + aveFlow.y*flowScale.y);
-    ellipse(mainX + mainW/2, mainY + mainH/2, 5, 5);
+    if (aveFlow.y>0) {
+      strokeWeight(5);
+      line(mainX + mainW/2, 
+        mainY, 
+        mainX + mainW/2, 
+        mainY + min(aveFlow.y*flowScale.y*4, (height-40)/2));
+      strokeWeight(3);
+    }
+    //ellipse(mainX + mainW/2, mainY + mainH/2, 5, 5);
     break;
+
   default:
   }
 
@@ -169,7 +176,9 @@ void log(String logMessage) {
 
 
 boolean flowEvent() {
+
   opencv.calculateOpticalFlow();
   aveFlow = opencv.getAverageFlowInRegion((int)mainX/4, (int)mainY/4, (int)mainW/4, (int)mainH/4);
-  return (aveFlow.y*flowScale.y > 50 && millis()-lastFlowEvent>500);
+
+  return (aveFlow.y*flowScale.y > 50 && millis()-lastFlowEvent>750);
 }
