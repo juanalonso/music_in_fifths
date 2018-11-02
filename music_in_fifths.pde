@@ -2,20 +2,21 @@ import gab.opencv.*;
 import processing.video.*;
 import processing.sound.*;
 
-int NUMFILES = 35;
+int NUMFILES = 2;
 
 public enum States {
-  waitingForCam, calibrating, playing, playingAndNext
+  waitingForCam, calibrating, waitingForStart, playing, playingAndNext, end
 };
 States currentState = States.waitingForCam;
 
 int currentLoop = 0;
 
 int calibTime = 0;
+int lastFlowEvent = 0;
 
 OpenCV opencv;
 PVector flowScale = new PVector(55, 55);
-PVector aveFlow;
+PVector aveFlow = new PVector(0, 0);
 
 float mainX, mainY, mainW, mainH;
 Capture video;
@@ -45,7 +46,8 @@ void setup() {
 
   for (int f=0; f<NUMFILES; f++) {
     println("Reading file " + (f+1) + "/" + NUMFILES); 
-    loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");    
+    loop[f] = new SoundFile(this, "mif "+ (f+1) +".wav");  
+    loop[f].stop();
     loopStartedAt[f] = -1000;
     //reverb[f] = new Reverb(this);
     //reverb[f].set(0.9, 0.1, 0.3);
@@ -63,25 +65,31 @@ void draw() {
   videoScaled.resize(width/4, (height-20)/4);  
   opencv.loadImage(videoScaled);
 
-  if (currentState == States.calibrating) {
+  switch (currentState) {
+  case calibrating:
+
     if (millis()-calibTime>2000) {
-      currentState = States.playing;
-      opencv.calculateOpticalFlow();
-      stroke(20, 200, 20);
+      currentState = States.waitingForStart;
+      log("Waiting for start signal");
     }
-  } 
+    break;
 
-  if (currentState == States.playing) {
 
-    opencv.calculateOpticalFlow();
-    aveFlow = opencv.getAverageFlowInRegion((int)mainX/4, (int)mainY/4, (int)mainW/4, (int)mainH/4);
+  case waitingForStart:
 
-    if (aveFlow.y*flowScale.y > 50) {
+    if (flowEvent()) {
+      currentState = States.playing;
+      lastFlowEvent = millis();
+    }
+    break;
+
+
+  case playing:
+
+    if (flowEvent()) {
       currentState = States.playingAndNext;
-
-      println("Waiting for next fragment");
-      background(0);
-      text("Waiting for next fragment", 12, 507);
+      lastFlowEvent = millis();
+      log("Waiting for fragment to finish");
     }
 
     if (loop[currentLoop].position()==0 &&  millis()-loopStartedAt[currentLoop]>1000) {
@@ -91,22 +99,26 @@ void draw() {
 
       /*
       if (!isProcessingReverb[currentLoop]) {
-        reverb[currentLoop].process(loop[currentLoop]);
-        isProcessingReverb[currentLoop] = true;
-      }
-      */
+       reverb[currentLoop].process(loop[currentLoop]);
+       isProcessingReverb[currentLoop] = true;
+       }
+       */
 
-      println("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
-      background(0);
-      text("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)", 12, 507);
+      log("Fragment "+ (currentLoop+1) +" ("  + loop[currentLoop].duration() + "s)");
     }
-  }
+    break;
 
-  if (currentState == States.playingAndNext) {
+
+  case playingAndNext:
+
     if (loop[currentLoop].position()==0) {
       currentLoop = (currentLoop+1)%NUMFILES;
-      currentState = States.playing;
-      opencv.calculateOpticalFlow();
+      if (currentLoop!=0) {
+        currentState = States.playing;
+      } else { 
+        currentState = States.end;
+        log("End of the performance");
+      }
     }
   }
 
@@ -122,6 +134,7 @@ void draw() {
     stroke(100, 150, 255);
     break;
   case playing: 
+  case waitingForStart: 
     stroke(20, 240, 20);
     line(mainX + mainW/2, 
       mainY + mainH/2, 
@@ -145,4 +158,18 @@ void captureEvent(Capture c) {
     calibTime = millis();
     currentState = States.calibrating;
   }
+}
+
+
+void log(String logMessage) {
+  println(logMessage);
+  background(0);
+  text(logMessage, 12, 507);
+}
+
+
+boolean flowEvent() {
+  opencv.calculateOpticalFlow();
+  aveFlow = opencv.getAverageFlowInRegion((int)mainX/4, (int)mainY/4, (int)mainW/4, (int)mainH/4);
+  return (aveFlow.y*flowScale.y > 50 && millis()-lastFlowEvent>500);
 }
